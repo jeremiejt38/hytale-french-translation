@@ -277,7 +277,7 @@ namespace HytaleFrenchPatch
             btnInstall.Enabled = selectedPatch != null && !string.IsNullOrEmpty(detectedGameRoot) && !string.IsNullOrEmpty(selectedPatch.PatchZip);
         }
 
-        private void BtnBrowse_Click(object sender, EventArgs e)
+        private async void BtnBrowse_Click(object sender, EventArgs e)
         {
             using (var fbd = new FolderBrowserDialog { Description = "Sélectionnez le dossier Hytale" })
             {
@@ -285,6 +285,8 @@ namespace HytaleFrenchPatch
                 {
                     txtPath.Text = fbd.SelectedPath;
                     detectedGameRoot = null; detectedLangDir = null; detectedAssetsZip = null; detectedVersion = null; detectedBuild = null;
+                    selectedPatch = null;
+                    btnInstall.Enabled = false;
                     if (TrySetGamePath(fbd.SelectedPath))
                     {
                         lblGameVer.Text = $"Dossier valide : Hytale {detectedVersion ?? "?"} (build {detectedBuild ?? "?"})";
@@ -294,7 +296,7 @@ namespace HytaleFrenchPatch
                         lblGameVer.Text = "Dossier invalide : Language et/ou Assets.zip introuvable.";
                         lblGameVer.ForeColor = Color.FromArgb(224, 138, 138);
                     }
-                    FetchCompatiblePatchAsync();
+                    await FetchCompatiblePatchAsync();
                 }
             }
         }
