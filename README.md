@@ -1,53 +1,45 @@
-# Hytale — French Translation Pack (fr-FR)
+# Hytale — Pack de traduction française (fr-FR)
 
-Community French translation for **Hytale** (early access).
+Traduction française communautaire pour **Hytale** (accès anticipé).
 
-- **Game version targeted:** `0.6.8` (build 31)
-- **Pack last updated:** 2026-09-28
-- **Coverage:**
-  - `client.lang` (3,484 keys) — all client UI/menus/settings/HUD
-  - `server.lang` item names & descriptions (3,791 items + 331 descriptions)
-  - avatar customization names (hair, faces, clothes, emotes, etc.)
+> Version anglaise : [README.en.md](README.en.md)
 
-Hytale does not ship an official French locale yet. This pack adds a `fr-FR` language folder for the client and patches the game `Assets.zip` so that items, workbenches and cosmetic names are translated too.
+- **Version du jeu ciblée :** `0.6.8` (build 31)
+- **Dernière mise à jour du pack :** 28/09/2026
+- **Couverture :**
+  - `client.lang` (3 484 clés) — toute l'interface, menus, paramètres, ATH
+  - `server.lang` : noms et descriptions des objets (3 791 objets + 331 descriptions)
+  - noms des cosmétiques / personnalisation de l'avatar
 
-> French version of this README: [README.fr.md](README.fr.md)
+## Installeur (.exe)
 
-## Installer (.exe)
+1. Va dans [Releases](https://github.com/jeremiejt38/hytale-french-translation/releases) et télécharge **`HytaleFrenchPatch.exe`** de la dernière release.
+2. Exécute-le. Il va :
+   - détecter ton installation Hytale,
+   - lire la version du jeu dans `env.dat`,
+   - récupérer la dernière version du patch compatible depuis ce repo,
+   - installer les fichiers `fr-FR` dans le dossier `Language`,
+   - patcher `Assets.zip` pour ajouter les noms d'objets et d'avatar (avec sauvegarde automatique).
+3. En jeu : **Settings → General → Language → Français**, puis retourne au menu principal.
 
-1. Go to [Releases](https://github.com/jeremiejt38/hytale-french-translation/releases) and download **`HytaleFrenchPatch.exe`** for the latest release.
-2. Run it. It will:
-   - detect your Hytale installation,
-   - read the game version from `env.dat`,
-   - fetch the most recent compatible patch from this repository,
-   - install the `fr-FR` client files into the game's `Language` folder,
-   - patch `Assets.zip` to add French item / avatar names (with an automatic backup).
-3. In game: **Settings → General → Language → Français**, then return to the main menu.
+L'installeur affiche la bannière officielle Hytale (Wikimedia) et les versions du jeu + patch.
 
-The installer uses the official Hytale banner from Wikimedia and shows the matched game/patch versions.
+## Installation manuelle
 
-## Manual install
-
-1. Locate your Hytale install, e.g. `D:\Games\Hytale`.
-2. **Client language:** copy [`lang/fr-FR/client.lang`](lang/fr-FR/client.lang) and [`lang/fr-FR/meta.lang`](lang/fr-FR/meta.lang) into:
+1. Trouve ton dossier Hytale, ex. `D:\Games\Hytale`.
+2. **Langue client :** copie [`lang/fr-FR/client.lang`](lang/fr-FR/client.lang) et [`lang/fr-FR/meta.lang`](lang/fr-FR/meta.lang) dans :
    `install\release\package\game\latest\Client\Data\Shared\Language\fr-FR\`
-3. **Items / avatar names:** update `Assets.zip` with the files under [`assets-patch/`](assets-patch/) using 7-Zip or any zip tool. The paths inside the zip must match:
+3. **Objets / avatar :** mets à jour `Assets.zip` avec les fichiers sous [`assets-patch/`](assets-patch/). Les chemins à l'intérieur du zip doivent être :
    - `Server/Languages/fr-FR/server.lang`
    - `Common/Languages/fr-FR/avatarCustomization/*.lang`
 
-## Uninstall
+## Désinstallation
 
-Delete the `fr-FR` folder inside `Language` and remove the `fr-FR` entries from `Assets.zip`. The installer also provides a **Désinstaller** button that does this automatically.
+Supprime le dossier `fr-FR` dans `Language` et retire les entrées `fr-FR` de `Assets.zip`. L'installeur propose aussi un bouton **Désinstaller**.
 
-## Notes & limitations
+## Limites
 
-- Game updates may wipe custom folders — reinstall the pack after an update.
-- Server-provided strings (chat, dynamic item names) and `[TMP]` placeholder texts stay in English.
-- Item translations are generated automatically, so a few names may sound awkward. Pull requests to improve them are welcome.
-- Untranslated or wrong string? Open an issue — the pack targets game version `0.6.8`; keys missing after a game update will silently fall back to English.
-
-## Contributing
-
-`.lang` files use Java-style `key = value` properties with ICU plural syntax (`{count, plural, one {...} other {...}}`), `{placeholder}` variables and Hytale markup (`<b>`, `<color is="#...">`). Keep keys and placeholders exactly as in `en-US` when editing.
-
-Fan project — not affiliated with Hypixel Studios. `Hytale` and the Hytale logo are trademarks of Hypixel Inc.; the installer banner is loaded from Wikimedia.
+- Une mise à jour du jeu peut effacer le dossier — réinstalle le pack après une update.
+- Les textes venant des serveurs et les chaînes `[TMP]` restent en anglais.
+- Les noms d'objets sont traduits automatiquement : certains peuvent être un peu bizarres. Les PR pour améliorer sont les bienvenues.
+- Une erreur de traduction ? Ouvre une issue !
