@@ -1,11 +1,11 @@
 {
-  "latest": "v0.6.8-3",
+  "latest": "v0.6.8-4",
   "patches": {
     "0.6.8": {
       "build": 31,
-      "patch_version": "v0.6.8-3",
+      "patch_version": "v0.6.8-4",
       "patch_date": "2026-09-29",
-      "patch_zip": "https://github.com/jeremiejt38/hytale-french-translation/releases/download/v0.6.8-3/hytale-fr-patch-v0.6.8-3.zip"
+      "patch_zip": "https://github.com/jeremiejt38/hytale-french-translation/releases/download/v0.6.8-4/hytale-fr-patch-v0.6.8-4.zip"
     }
   }
 }
