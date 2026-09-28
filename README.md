@@ -10,18 +10,17 @@ Hytale does not ship an official French locale yet. This pack adds a `fr-FR` lan
 
 > French version of this README: [README.fr.md](README.fr.md)
 
-## Easy install (Windows GUI)
+## Installer (.exe)
 
-1. Download [`installer/Install-HytaleFrench.ps1`](installer/Install-HytaleFrench.ps1) (and `assets/logo.png` next to it if you want the banner image, otherwise it is fetched automatically).
-2. Right-click → **Run with PowerShell** (or run it from a terminal).
-3. The installer auto-detects your Hytale folder — confirm or browse to it, then click **Installer**.
-4. In game: **Settings → General → Language → Français**, then return to the main menu.
+1. Go to [Releases](https://github.com/jeremiejt38/hytale-french-translation/releases) and download **`HytaleFrenchPatch.exe`** for the latest release.
+2. Run it. It will:
+   - detect your Hytale installation,
+   - read the game version from `env.dat`,
+   - fetch the most recent compatible patch from this repository,
+   - install `fr-FR` into the game's `Language` folder.
+3. In game: **Settings → General → Language → Français**, then return to the main menu.
 
-One-liner from an elevated-optional PowerShell (downloads and runs the GUI):
-
-```powershell
-iwr https://raw.githubusercontent.com/jeremiejt38/hytale-french-translation/main/installer/Install-HytaleFrench.ps1 -OutFile "$env:TEMP\Install-HytaleFrench.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\Install-HytaleFrench.ps1"
-```
+The installer uses the official Hytale banner from Wikimedia and shows the matched game/patch versions.
 
 ## Manual install
 
@@ -45,4 +44,4 @@ Delete the `fr-FR` folder (or use the **Désinstaller** button in the installer)
 
 `client.lang` uses Java-style `key = value` properties with ICU plural syntax (`{count, plural, one {...} other {...}}`), `{placeholder}` variables and Hytale markup (`<b>`, `<color is="#...">`). Keep keys and placeholders exactly as in `en-US` when editing.
 
-Fan project — not affiliated with Hypixel Studios. `Hytale` and the Hytale logo are trademarks of Hypixel Inc.; `assets/` images are extracted from the game for the installer UI only.
+Fan project — not affiliated with Hypixel Studios. `Hytale` and the Hytale logo are trademarks of Hypixel Inc.; the installer banner is loaded from Wikimedia.

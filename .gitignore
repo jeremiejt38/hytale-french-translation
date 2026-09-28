@@ -1,0 +1,7 @@
+# Build outputs
+*.exe
+*.zip
+*.pdb
+publish/
+bin/
+obj/
