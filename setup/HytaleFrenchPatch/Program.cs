@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -26,6 +29,7 @@ namespace HytaleFrenchPatch
         private const string RepoRaw = "https://raw.githubusercontent.com/jeremiejt38/hytale-french-translation/main";
         private const string WikiBanner = "https://upload.wikimedia.org/wikipedia/fr/4/42/Hytale_Logo.png";
         private const string VersionsUrl = RepoRaw + "/versions.json";
+        private const string DefaultLocale = "fr-FR";
 
         private readonly HttpClient http = new HttpClient();
 
@@ -37,13 +41,15 @@ namespace HytaleFrenchPatch
 
         private string detectedVersion = null;
         private string detectedBuild = null;
+        private string detectedGameRoot = null;
         private string detectedLangDir = null;
+        private string detectedAssetsZip = null;
         private PatchInfo selectedPatch = null;
 
         public MainForm()
         {
             Text = "Hytale — Patch de traduction française";
-            Size = new Size(700, 560);
+            Size = new Size(700, 580);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
@@ -51,10 +57,10 @@ namespace HytaleFrenchPatch
             Font = new Font("Segoe UI", 10F);
             ForeColor = Color.FromArgb(220, 226, 242);
 
-            var margin = 24;
+            int m = 24;
             bannerBox = new PictureBox
             {
-                Location = new Point(margin, margin),
+                Location = new Point(m, m),
                 Size = new Size(640, 220),
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.FromArgb(19, 27, 48),
@@ -63,7 +69,7 @@ namespace HytaleFrenchPatch
             lblTitle = new Label
             {
                 Text = "Pack de traduction française (fr-FR) pour Hytale",
-                Location = new Point(margin, bannerBox.Bottom + 14),
+                Location = new Point(m, bannerBox.Bottom + 14),
                 Size = new Size(640, 22),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
@@ -72,7 +78,7 @@ namespace HytaleFrenchPatch
             lblGameVer = new Label
             {
                 Text = "Détection du jeu...",
-                Location = new Point(margin, lblTitle.Bottom + 8),
+                Location = new Point(m, lblTitle.Bottom + 8),
                 Size = new Size(640, 18),
                 ForeColor = Color.FromArgb(159, 180, 216),
             };
@@ -80,21 +86,21 @@ namespace HytaleFrenchPatch
             lblPatchVer = new Label
             {
                 Text = "Recherche du patch compatible...",
-                Location = new Point(margin, lblGameVer.Bottom + 6),
+                Location = new Point(m, lblGameVer.Bottom + 6),
                 Size = new Size(640, 18),
                 ForeColor = Color.FromArgb(111, 207, 151),
             };
 
             lblPath = new Label
             {
-                Text = "Dossier d'installation :",
-                Location = new Point(margin, lblPatchVer.Bottom + 18),
+                Text = "Dossier d'installation de Hytale :",
+                Location = new Point(m, lblPatchVer.Bottom + 18),
                 Size = new Size(640, 18),
             };
 
             txtPath = new TextBox
             {
-                Location = new Point(margin, lblPath.Bottom + 6),
+                Location = new Point(m, lblPath.Bottom + 6),
                 Size = new Size(520, 26),
                 BackColor = Color.FromArgb(26, 36, 56),
                 ForeColor = Color.White,
@@ -116,7 +122,7 @@ namespace HytaleFrenchPatch
 
             progress = new ProgressBar
             {
-                Location = new Point(margin, txtPath.Bottom + 18),
+                Location = new Point(m, txtPath.Bottom + 18),
                 Size = new Size(640, 14),
                 Style = ProgressBarStyle.Continuous,
                 Visible = false,
@@ -125,7 +131,7 @@ namespace HytaleFrenchPatch
             btnInstall = new Button
             {
                 Text = "Installer",
-                Location = new Point(margin, progress.Bottom + 18),
+                Location = new Point(m, progress.Bottom + 18),
                 Size = new Size(160, 38),
                 BackColor = Color.FromArgb(61, 123, 239),
                 ForeColor = Color.White,
@@ -154,8 +160,8 @@ namespace HytaleFrenchPatch
             lblStatus = new Label
             {
                 Text = "Prêt",
-                Location = new Point(margin, btnInstall.Bottom + 18),
-                Size = new Size(640, 40),
+                Location = new Point(m, btnInstall.Bottom + 18),
+                Size = new Size(640, 50),
                 ForeColor = Color.FromArgb(159, 180, 216),
             };
 
@@ -166,29 +172,8 @@ namespace HytaleFrenchPatch
 
         private async Task InitializeAsync()
         {
-            try
-            {
-                bannerBox.Image = await LoadImageAsync(WikiBanner);
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = $"Impossible de charger la bannière : {ex.Message}";
-            }
-
+            try { bannerBox.Image = await LoadImageAsync(WikiBanner); } catch { }
             DetectGame();
-
-            if (!string.IsNullOrEmpty(detectedLangDir))
-            {
-                txtPath.Text = Directory.GetParent(Directory.GetParent(detectedLangDir)?.FullName)?.FullName ?? detectedLangDir;
-                lblGameVer.Text = $"Jeu détecté : Hytale {detectedVersion ?? "?"} (build {detectedBuild ?? "?"}) — {detectedLangDir}";
-                btnUninstall.Enabled = Directory.Exists(Path.Combine(detectedLangDir, "fr-FR"));
-            }
-            else
-            {
-                lblGameVer.Text = "Jeu Hytale non détecté automatiquement. Sélectionnez le dossier Hytale.";
-                lblGameVer.ForeColor = Color.FromArgb(224, 179, 106);
-            }
-
             await FetchCompatiblePatchAsync();
         }
 
@@ -196,9 +181,7 @@ namespace HytaleFrenchPatch
         {
             var bytes = await http.GetByteArrayAsync(url);
             using (var ms = new MemoryStream(bytes))
-            {
                 return Image.FromStream(ms);
-            }
         }
 
         private void DetectGame()
@@ -212,28 +195,32 @@ namespace HytaleFrenchPatch
                     Path.Combine(drive.RootDirectory.FullName, "Program Files", "Hytale"),
                 })
                 {
-                    TryRegisterGamePath(root);
-                    if (detectedLangDir != null) return;
+                    if (TrySetGamePath(root)) return;
                 }
             }
-
             var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            TryRegisterGamePath(Path.Combine(localApp, "Programs", "Hypixel Studios", "Hytale"));
+            TrySetGamePath(Path.Combine(localApp, "Programs", "Hypixel Studios", "Hytale"));
         }
 
-        private void TryRegisterGamePath(string root)
+        private bool TrySetGamePath(string root)
         {
-            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return;
-            var envDat = Path.Combine(root, "install", "release", "env.dat");
+            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return false;
             var langDir = Path.Combine(root, "install", "release", "package", "game", "latest", "Client", "Data", "Shared", "Language");
-            if (File.Exists(envDat))
+            var assetsZip = Path.Combine(root, "install", "release", "package", "game", "latest", "Assets.zip");
+            var envDat = Path.Combine(root, "install", "release", "env.dat");
+            if (File.Exists(envDat)) ReadVersionFromEnv(envDat);
+            if (Directory.Exists(langDir) && File.Exists(assetsZip))
             {
-                ReadVersionFromEnv(envDat);
-            }
-            if (Directory.Exists(langDir))
-            {
+                detectedGameRoot = root;
                 detectedLangDir = langDir;
+                detectedAssetsZip = assetsZip;
+                txtPath.Text = root;
+                lblGameVer.Text = $"Jeu détecté : Hytale {detectedVersion ?? "?"} (build {detectedBuild ?? "?"})";
+                lblGameVer.ForeColor = Color.FromArgb(159, 180, 216);
+                btnUninstall.Enabled = Directory.Exists(Path.Combine(langDir, DefaultLocale));
+                return true;
             }
+            return false;
         }
 
         private void ReadVersionFromEnv(string path)
@@ -243,16 +230,14 @@ namespace HytaleFrenchPatch
                 var json = File.ReadAllText(path);
                 using (var doc = JsonDocument.Parse(json))
                 {
-                    if (doc.RootElement.TryGetProperty("dependency_versions", out var deps))
+                    if (doc.RootElement.TryGetProperty("dependency_versions", out var deps) &&
+                        deps.TryGetProperty("game", out var game))
                     {
-                        if (deps.TryGetProperty("game", out var game))
+                        foreach (var kvp in game.EnumerateObject())
                         {
-                            foreach (var kvp in game.EnumerateObject())
-                            {
-                                detectedVersion = kvp.Name;
-                                if (kvp.Value.TryGetProperty("build", out var b)) detectedBuild = b.GetInt32().ToString();
-                                break;
-                            }
+                            detectedVersion = kvp.Name;
+                            if (kvp.Value.TryGetProperty("build", out var b)) detectedBuild = b.GetInt32().ToString();
+                            break;
                         }
                     }
                 }
@@ -274,7 +259,9 @@ namespace HytaleFrenchPatch
                 }
                 else if (versions?.Latest != null)
                 {
-                    lblPatchVer.Text = $"Aucun patch exact trouvé. Dernier patch disponible : {versions.Latest}";
+                    selectedPatch = versions.Patches?.Values.FirstOrDefault(p => p.PatchVersion == versions.Latest)
+                        ?? new PatchInfo { PatchVersion = versions.Latest };
+                    lblPatchVer.Text = $"Aucun patch exact. Dernier disponible : {versions.Latest}";
                 }
                 else
                 {
@@ -284,11 +271,10 @@ namespace HytaleFrenchPatch
             }
             catch (Exception ex)
             {
-                lblPatchVer.Text = $"Erreur de récupération du patch : {ex.Message}";
+                lblPatchVer.Text = $"Erreur récupération patch : {ex.Message}";
                 lblPatchVer.ForeColor = Color.FromArgb(224, 138, 138);
             }
-
-            btnInstall.Enabled = selectedPatch != null && !string.IsNullOrEmpty(detectedLangDir);
+            btnInstall.Enabled = selectedPatch != null && !string.IsNullOrEmpty(detectedGameRoot) && !string.IsNullOrEmpty(selectedPatch.PatchZip);
         }
 
         private void BtnBrowse_Click(object sender, EventArgs e)
@@ -298,18 +284,14 @@ namespace HytaleFrenchPatch
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     txtPath.Text = fbd.SelectedPath;
-                    detectedLangDir = null;
-                    detectedVersion = null; detectedBuild = null;
-                    TryRegisterGamePath(fbd.SelectedPath);
-                    if (detectedLangDir != null)
+                    detectedGameRoot = null; detectedLangDir = null; detectedAssetsZip = null; detectedVersion = null; detectedBuild = null;
+                    if (TrySetGamePath(fbd.SelectedPath))
                     {
                         lblGameVer.Text = $"Dossier valide : Hytale {detectedVersion ?? "?"} (build {detectedBuild ?? "?"})";
-                        lblGameVer.ForeColor = Color.FromArgb(159, 180, 216);
-                        btnUninstall.Enabled = Directory.Exists(Path.Combine(detectedLangDir, "fr-FR"));
                     }
                     else
                     {
-                        lblGameVer.Text = "Dossier invalide : env.dat et/ou Language introuvable.";
+                        lblGameVer.Text = "Dossier invalide : Language et/ou Assets.zip introuvable.";
                         lblGameVer.ForeColor = Color.FromArgb(224, 138, 138);
                     }
                     FetchCompatiblePatchAsync();
@@ -319,35 +301,40 @@ namespace HytaleFrenchPatch
 
         private async void BtnInstall_Click(object sender, EventArgs e)
         {
-            if (selectedPatch == null || detectedLangDir == null) return;
-
+            if (selectedPatch == null || detectedGameRoot == null) return;
             SetBusy(true);
-            progress.Visible = true;
-            lblStatus.Text = "Téléchargement du patch...";
-            progress.Value = 0;
-
+            progress.Visible = true; progress.Value = 0;
             try
             {
-                var tempDir = Path.Combine(Path.GetTempPath(), "hytale-fr-patch");
-                Directory.CreateDirectory(tempDir);
+                lblStatus.Text = "Téléchargement du patch...";
+                var tmp = Path.Combine(Path.GetTempPath(), "hytale-fr-patch-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(tmp);
+                var patchZip = Path.Combine(tmp, "patch.zip");
+                await DownloadWithProgressAsync(selectedPatch.PatchZip, patchZip, 50);
+                progress.Value = 50;
 
-                var clientPath = Path.Combine(tempDir, "client.lang");
-                var metaPath = Path.Combine(tempDir, "meta.lang");
+                lblStatus.Text = "Extraction du patch...";
+                ZipFile.ExtractToDirectory(patchZip, tmp);
+                progress.Value = 60;
 
-                await DownloadWithProgressAsync(selectedPatch.ClientLang, clientPath, 50);
-                await DownloadWithProgressAsync(selectedPatch.MetaLang, metaPath, 100);
+                var extractedLang = Path.Combine(tmp, "Language", DefaultLocale);
+                var extractedAssets = Path.Combine(tmp, "Assets");
 
-                lblStatus.Text = "Installation dans le dossier Language...";
-                var frDir = Path.Combine(detectedLangDir, "fr-FR");
-                Directory.CreateDirectory(frDir);
-                File.Copy(clientPath, Path.Combine(frDir, "client.lang"), true);
-                File.Copy(metaPath, Path.Combine(frDir, "meta.lang"), true);
+                lblStatus.Text = "Installation des fichiers de langue...";
+                var destLangDir = Path.Combine(detectedLangDir, DefaultLocale);
+                Directory.CreateDirectory(destLangDir);
+                foreach (var f in Directory.GetFiles(extractedLang))
+                    File.Copy(f, Path.Combine(destLangDir, Path.GetFileName(f)), true);
+                progress.Value = 70;
+
+                lblStatus.Text = "Mise à jour d'Assets.zip (sauvegarde incluse)...";
+                await Task.Run(() => UpdateAssetsZip(extractedAssets, detectedAssetsZip));
+                progress.Value = 100;
 
                 lblStatus.Text = "Installation terminée !";
                 lblStatus.ForeColor = Color.FromArgb(111, 207, 151);
-                btnUninstall.Enabled = true;
                 MessageBox.Show(
-                    "Le pack français est installé.\n\nDans Hytale : Settings > General > Language > Français, puis retournez au menu principal.",
+                    "Traduction française installée.\n\nDans Hytale : Settings > General > Language > Français, puis retournez au menu principal.",
                     "Installation réussie", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -362,41 +349,100 @@ namespace HytaleFrenchPatch
             }
         }
 
-        private async Task DownloadWithProgressAsync(string url, string dest, int targetPercent)
+        private async void BtnUninstall_Click(object sender, EventArgs e)
         {
-            using (var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+            if (detectedGameRoot == null) return;
+            SetBusy(true);
+            try
             {
-                response.EnsureSuccessStatusCode();
-                var total = response.Content.Headers.ContentLength ?? -1L;
-                using (var s = await response.Content.ReadAsStreamAsync())
-                using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None))
+                var frDir = Path.Combine(detectedLangDir, DefaultLocale);
+                if (Directory.Exists(frDir))
                 {
-                    var buffer = new byte[8192];
-                    long read = 0;
-                    int n;
-                    while ((n = await s.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        await fs.WriteAsync(buffer, 0, n);
-                        read += n;
-                        if (total > 0)
-                        {
-                            int value = (int)((double)read / total * targetPercent);
-                            if (value > progress.Value) progress.Value = Math.Min(value, 100);
-                        }
-                    }
+                    Directory.Delete(frDir, true);
+                    lblStatus.Text = "Pack fr-FR supprimé du dossier Language.";
+                }
+                else
+                {
+                    lblStatus.Text = "Le pack fr-FR n'est pas installé.";
+                    lblStatus.ForeColor = Color.FromArgb(224, 179, 106);
+                }
+
+                if (File.Exists(detectedAssetsZip))
+                {
+                    lblStatus.Text += "\nNettoyage d'Assets.zip...";
+                    await Task.Run(() => RemoveAssetsLocale(DefaultLocale));
+                }
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = $"Erreur désinstallation : {ex.Message}";
+                lblStatus.ForeColor = Color.FromArgb(224, 138, 138);
+            }
+            finally { SetBusy(false); }
+        }
+
+        private void UpdateAssetsZip(string extractedAssetsRoot, string assetsZipPath)
+        {
+            var backup = assetsZipPath + ".bak.fr";
+            if (!File.Exists(backup))
+                File.Copy(assetsZipPath, backup, false);
+
+            var assetFiles = Directory.GetFiles(extractedAssetsRoot, "*.lang", SearchOption.AllDirectories)
+                .Select(f => (fullPath: f, entryName: GetZipEntryName(f, extractedAssetsRoot)))
+                .ToList();
+
+            using (var archive = ZipFile.Open(assetsZipPath, ZipArchiveMode.Update))
+            {
+                foreach (var (fullPath, entryName) in assetFiles)
+                {
+                    var existing = archive.GetEntry(entryName);
+                    existing?.Delete();
+                    archive.CreateEntryFromFile(fullPath, entryName, CompressionLevel.Optimal);
                 }
             }
         }
 
-        private void BtnUninstall_Click(object sender, EventArgs e)
+        private void RemoveAssetsLocale(string locale)
         {
-            var frDir = Path.Combine(detectedLangDir, "fr-FR");
-            if (Directory.Exists(frDir))
+            var prefix1 = $"Server/Languages/{locale}/";
+            var prefix2 = $"Common/Languages/{locale}/";
+            using (var archive = ZipFile.Open(detectedAssetsZip, ZipArchiveMode.Update))
             {
-                Directory.Delete(frDir, true);
-                lblStatus.Text = "Pack français désinstallé.";
-                lblStatus.ForeColor = Color.FromArgb(159, 180, 216);
-                btnUninstall.Enabled = false;
+                var toDelete = archive.Entries
+                    .Where(e => e.FullName.StartsWith(prefix1) || e.FullName.StartsWith(prefix2))
+                    .ToList();
+                foreach (var entry in toDelete) entry.Delete();
+            }
+        }
+
+        private string GetZipEntryName(string fullPath, string root)
+        {
+            var rel = fullPath.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return rel.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
+        }
+
+        private async Task DownloadWithProgressAsync(string url, string dest, int targetPercent)
+        {
+            using (var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+            {
+                resp.EnsureSuccessStatusCode();
+                var total = resp.Content.Headers.ContentLength ?? -1L;
+                using (var s = await resp.Content.ReadAsStreamAsync())
+                using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    var buf = new byte[8192];
+                    long read = 0; int n;
+                    while ((n = await s.ReadAsync(buf, 0, buf.Length)) > 0)
+                    {
+                        await fs.WriteAsync(buf, 0, n);
+                        read += n;
+                        if (total > 0)
+                        {
+                            int v = (int)((double)read / total * targetPercent);
+                            if (v > progress.Value) progress.Value = Math.Min(v, 100);
+                        }
+                    }
+                }
             }
         }
 
@@ -404,21 +450,16 @@ namespace HytaleFrenchPatch
         {
             btnInstall.Enabled = !busy;
             btnBrowse.Enabled = !busy;
-            btnUninstall.Enabled = !busy && Directory.Exists(Path.Combine(detectedLangDir ?? "", "fr-FR"));
+            btnUninstall.Enabled = !busy;
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
         }
 
         public class PatchInfo
         {
             public int Build { get; set; }
-            [System.Text.Json.Serialization.JsonPropertyName("patch_version")]
-            public string PatchVersion { get; set; }
-            [System.Text.Json.Serialization.JsonPropertyName("patch_date")]
-            public string PatchDate { get; set; }
-            [System.Text.Json.Serialization.JsonPropertyName("client_lang")]
-            public string ClientLang { get; set; }
-            [System.Text.Json.Serialization.JsonPropertyName("meta_lang")]
-            public string MetaLang { get; set; }
+            [JsonPropertyName("patch_version")] public string PatchVersion { get; set; }
+            [JsonPropertyName("patch_date")] public string PatchDate { get; set; }
+            [JsonPropertyName("patch_zip")] public string PatchZip { get; set; }
         }
 
         public class VersionManifest

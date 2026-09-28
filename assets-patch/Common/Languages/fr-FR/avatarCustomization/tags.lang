@@ -1,0 +1,15 @@
+style.fantasy =Fantaisie
+style.modern =Moderne
+style.costume =Costume
+style.special =Spécial
+
+haircut.short =Cheveux courts
+haircut.medium =CHEVEUX MOYENS
+haircut.long =Cheveux longs
+HairLength.Short.name =Court
+HairLength.Medium.name =Moyenne
+HairLength.Long.name =long
+Style.Fantasy.name =Fantaisie
+Style.Modern.name =Moderne
+Style.Costume.name =Costume
+Style.Special.name =Spécial
