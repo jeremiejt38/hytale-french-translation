@@ -392,15 +392,36 @@ namespace HytaleFrenchPatch
             var assetFiles = Directory.GetFiles(extractedAssetsRoot, "*.lang", SearchOption.AllDirectories)
                 .Select(f => (fullPath: f, entryName: GetZipEntryName(f, extractedAssetsRoot)))
                 .ToList();
+            var newNames = new HashSet<string>(assetFiles.Select(f => f.entryName));
 
-            using (var archive = ZipFile.Open(assetsZipPath, ZipArchiveMode.Update))
+            // ZipArchiveMode.Update corrupts large (ZIP64) archives like Assets.zip:
+            // rebuild a clean contiguous archive instead, then swap it in.
+            var tmpPath = assetsZipPath + ".new";
+            try
             {
-                foreach (var (fullPath, entryName) in assetFiles)
+                using (var input = ZipFile.OpenRead(assetsZipPath))
+                using (var output = ZipFile.Open(tmpPath, ZipArchiveMode.Create))
                 {
-                    var existing = archive.GetEntry(entryName);
-                    existing?.Delete();
-                    archive.CreateEntryFromFile(fullPath, entryName, CompressionLevel.Optimal);
+                    foreach (var entry in input.Entries)
+                    {
+                        if (newNames.Contains(entry.FullName))
+                            continue; // replaced by the French version below
+                        var newEntry = output.CreateEntry(entry.FullName, CompressionLevel.Optimal);
+                        if (entry.Length > 0 && !entry.FullName.EndsWith("/"))
+                        {
+                            using (var si = entry.Open())
+                            using (var so = newEntry.Open())
+                                si.CopyTo(so);
+                        }
+                    }
+                    foreach (var (fullPath, entryName) in assetFiles)
+                        output.CreateEntryFromFile(fullPath, entryName, CompressionLevel.Optimal);
                 }
+                File.Move(tmpPath, assetsZipPath, true);
+            }
+            finally
+            {
+                if (File.Exists(tmpPath)) File.Delete(tmpPath);
             }
         }
 
@@ -408,12 +429,30 @@ namespace HytaleFrenchPatch
         {
             var prefix1 = $"Server/Languages/{locale}/";
             var prefix2 = $"Common/Languages/{locale}/";
-            using (var archive = ZipFile.Open(detectedAssetsZip, ZipArchiveMode.Update))
+            var tmpPath = detectedAssetsZip + ".new";
+            try
             {
-                var toDelete = archive.Entries
-                    .Where(e => e.FullName.StartsWith(prefix1) || e.FullName.StartsWith(prefix2))
-                    .ToList();
-                foreach (var entry in toDelete) entry.Delete();
+                using (var input = ZipFile.OpenRead(detectedAssetsZip))
+                using (var output = ZipFile.Open(tmpPath, ZipArchiveMode.Create))
+                {
+                    foreach (var entry in input.Entries)
+                    {
+                        if (entry.FullName.StartsWith(prefix1) || entry.FullName.StartsWith(prefix2))
+                            continue;
+                        var newEntry = output.CreateEntry(entry.FullName, CompressionLevel.Optimal);
+                        if (entry.Length > 0 && !entry.FullName.EndsWith("/"))
+                        {
+                            using (var si = entry.Open())
+                            using (var so = newEntry.Open())
+                                si.CopyTo(so);
+                        }
+                    }
+                }
+                File.Move(tmpPath, detectedAssetsZip, true);
+            }
+            finally
+            {
+                if (File.Exists(tmpPath)) File.Delete(tmpPath);
             }
         }
 
