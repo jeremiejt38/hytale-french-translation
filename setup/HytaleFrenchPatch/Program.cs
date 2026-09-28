@@ -466,8 +466,8 @@ namespace HytaleFrenchPatch
 
         public class VersionManifest
         {
-            public string Latest { get; set; }
-            public Dictionary<string, PatchInfo> Patches { get; set; }
+            [JsonPropertyName("latest")] public string Latest { get; set; }
+            [JsonPropertyName("patches")] public Dictionary<string, PatchInfo> Patches { get; set; }
         }
     }
 }
