@@ -385,43 +385,24 @@ namespace HytaleFrenchPatch
 
         private void UpdateAssetsZip(string extractedAssetsRoot, string assetsZipPath)
         {
+            // Preserve a pristine backup once, then always patch from that backup.
+            // We append the French entries only; touching any existing entry data can
+            // trigger the Hytale launcher's integrity validation.
             var backup = assetsZipPath + ".bak.fr";
             if (!File.Exists(backup))
                 File.Copy(assetsZipPath, backup, false);
 
+            // Restore the original archive so existing fr-FR entries (if any) vanish cleanly.
+            File.Copy(backup, assetsZipPath, true);
+
             var assetFiles = Directory.GetFiles(extractedAssetsRoot, "*.lang", SearchOption.AllDirectories)
                 .Select(f => (fullPath: f, entryName: GetZipEntryName(f, extractedAssetsRoot)))
                 .ToList();
-            var newNames = new HashSet<string>(assetFiles.Select(f => f.entryName));
 
-            // ZipArchiveMode.Update corrupts large (ZIP64) archives like Assets.zip:
-            // rebuild a clean contiguous archive instead, then swap it in.
-            var tmpPath = assetsZipPath + ".new";
-            try
+            using (var archive = ZipFile.Open(assetsZipPath, ZipArchiveMode.Update))
             {
-                using (var input = ZipFile.OpenRead(assetsZipPath))
-                using (var output = ZipFile.Open(tmpPath, ZipArchiveMode.Create))
-                {
-                    foreach (var entry in input.Entries)
-                    {
-                        if (newNames.Contains(entry.FullName))
-                            continue; // replaced by the French version below
-                        var newEntry = output.CreateEntry(entry.FullName, CompressionLevel.Optimal);
-                        if (entry.Length > 0 && !entry.FullName.EndsWith("/"))
-                        {
-                            using (var si = entry.Open())
-                            using (var so = newEntry.Open())
-                                si.CopyTo(so);
-                        }
-                    }
-                    foreach (var (fullPath, entryName) in assetFiles)
-                        output.CreateEntryFromFile(fullPath, entryName, CompressionLevel.Optimal);
-                }
-                File.Move(tmpPath, assetsZipPath, true);
-            }
-            finally
-            {
-                if (File.Exists(tmpPath)) File.Delete(tmpPath);
+                foreach (var (fullPath, entryName) in assetFiles)
+                    archive.CreateEntryFromFile(fullPath, entryName, CompressionLevel.Optimal);
             }
         }
 
@@ -429,30 +410,21 @@ namespace HytaleFrenchPatch
         {
             var prefix1 = $"Server/Languages/{locale}/";
             var prefix2 = $"Common/Languages/{locale}/";
-            var tmpPath = detectedAssetsZip + ".new";
-            try
+            var backup = detectedAssetsZip + ".bak.fr";
+            if (File.Exists(backup))
             {
-                using (var input = ZipFile.OpenRead(detectedAssetsZip))
-                using (var output = ZipFile.Open(tmpPath, ZipArchiveMode.Create))
-                {
-                    foreach (var entry in input.Entries)
-                    {
-                        if (entry.FullName.StartsWith(prefix1) || entry.FullName.StartsWith(prefix2))
-                            continue;
-                        var newEntry = output.CreateEntry(entry.FullName, CompressionLevel.Optimal);
-                        if (entry.Length > 0 && !entry.FullName.EndsWith("/"))
-                        {
-                            using (var si = entry.Open())
-                            using (var so = newEntry.Open())
-                                si.CopyTo(so);
-                        }
-                    }
-                }
-                File.Move(tmpPath, detectedAssetsZip, true);
+                File.Copy(backup, detectedAssetsZip, true);
             }
-            finally
+            else
             {
-                if (File.Exists(tmpPath)) File.Delete(tmpPath);
+                // Fallback: use Update mode only if no backup is available.
+                using (var archive = ZipFile.Open(detectedAssetsZip, ZipArchiveMode.Update))
+                {
+                    var toDelete = archive.Entries
+                        .Where(e => e.FullName.StartsWith(prefix1) || e.FullName.StartsWith(prefix2))
+                        .ToList();
+                    foreach (var entry in toDelete) entry.Delete();
+                }
             }
         }
 
