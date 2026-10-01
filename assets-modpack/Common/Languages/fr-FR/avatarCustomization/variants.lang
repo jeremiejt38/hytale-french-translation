@@ -1,0 +1,58 @@
+earSide =Côté oreille
+earSide.left =Gauche
+earSide.right =droite
+earSide.both =Les deux
+
+pattern.skull =Motif crâne
+pattern.star =mire étoile
+pattern.gaia =Modèle d'arbre prismatique
+pattern.cat =Motif de chat
+pattern.bunny =Motif lapin
+pattern.unicorn =Motif licorne
+pattern.cat =Motif de chat
+pattern.play =Modèle de bouton de lecture
+pattern.play_inverted =Motif du bouton de lecture inversé
+
+pants.dungareesshorts =Salopette short
+pants.bracedshorts =Short à bretelles
+pants.dungarees =Salopette
+pants.bracedpants =Pantalon à bretelles
+pants.hiddenbelt =Ceinture cachée
+
+option.a =Option A
+option.b =Option B
+option.c =Option C
+
+default =Par défaut
+
+overtops.Scavenger_Poncho =Pas de crâne
+
+capes.no_neck =Pas de cou
+
+haircuts.Dreadlocks01.name =dreadlocks (1)
+haircuts.Dreadlocks02.name =dreadlocks (2)
+haircuts.Dreadlocks03.name =big pussy lips (3)
+haircuts.FrizzyBun01.name =Frizzy Buns 1
+haircuts.FrizzyBun02.name =Frizzy Buns 2
+haircuts.SlickbackCowlick.name =Cowlicked Slickback
+haircuts.Hairstrand.name =Hairstrand
+haircuts.GoldenBangles.name =Bracelets joncs dor
+
+haircuts.Messy.name =Désordonné
+haircuts.Braids.name =Tresses
+haircuts.Locks.name =Verrouillages
+haircuts.Wild.name =Sauvage
+
+headaccessory.Logo_Cap_Movie.name =Logo du film
+headaccessory.Logo_Cap_Heart.name =Logo du cœur
+headaccessory.Logo_Cap_Hypixel.name =Logo Hypixel
+
+left_arm.name =Bras gauche
+right_arm.name =Bras droit
+
+thin.name =Très fin
+thick.name =Épais
+lefteye.name =Œil Gauche
+righteye.name =Oeil droit
+
+faceaccessory.BanditMask_SideKnot.name =Nœud latéral

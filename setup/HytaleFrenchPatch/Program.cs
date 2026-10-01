@@ -43,7 +43,7 @@ namespace HytaleFrenchPatch
         private string detectedBuild = null;
         private string detectedGameRoot = null;
         private string detectedLangDir = null;
-        private string detectedAssetsZip = null;
+        private string detectedUserDataDir = null;
         private PatchInfo selectedPatch = null;
 
         public MainForm()
@@ -206,14 +206,14 @@ namespace HytaleFrenchPatch
         {
             if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return false;
             var langDir = Path.Combine(root, "install", "release", "package", "game", "latest", "Client", "Data", "Shared", "Language");
-            var assetsZip = Path.Combine(root, "install", "release", "package", "game", "latest", "Assets.zip");
             var envDat = Path.Combine(root, "install", "release", "env.dat");
+            var userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Hytale", "UserData");
             if (File.Exists(envDat)) ReadVersionFromEnv(envDat);
-            if (Directory.Exists(langDir) && File.Exists(assetsZip))
+            if (Directory.Exists(langDir))
             {
                 detectedGameRoot = root;
                 detectedLangDir = langDir;
-                detectedAssetsZip = assetsZip;
+                detectedUserDataDir = userDataDir;
                 txtPath.Text = root;
                 lblGameVer.Text = $"Jeu détecté : Hytale {detectedVersion ?? "?"} (build {detectedBuild ?? "?"})";
                 lblGameVer.ForeColor = Color.FromArgb(159, 180, 216);
@@ -284,7 +284,7 @@ namespace HytaleFrenchPatch
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     txtPath.Text = fbd.SelectedPath;
-                    detectedGameRoot = null; detectedLangDir = null; detectedAssetsZip = null; detectedVersion = null; detectedBuild = null;
+                    detectedGameRoot = null; detectedLangDir = null; detectedUserDataDir = null; detectedVersion = null; detectedBuild = null;
                     selectedPatch = null;
                     btnInstall.Enabled = false;
                     if (TrySetGamePath(fbd.SelectedPath))
@@ -293,7 +293,7 @@ namespace HytaleFrenchPatch
                     }
                     else
                     {
-                        lblGameVer.Text = "Dossier invalide : Language et/ou Assets.zip introuvable.";
+                        lblGameVer.Text = "Dossier invalide : le dossier Language de Hytale est introuvable.";
                         lblGameVer.ForeColor = Color.FromArgb(224, 138, 138);
                     }
                     await FetchCompatiblePatchAsync();
@@ -320,7 +320,6 @@ namespace HytaleFrenchPatch
                 progress.Value = 60;
 
                 var extractedLang = Path.Combine(tmp, "Language", DefaultLocale);
-                var extractedAssets = Path.Combine(tmp, "Assets");
 
                 lblStatus.Text = "Installation des fichiers de langue...";
                 var destLangDir = Path.Combine(detectedLangDir, DefaultLocale);
@@ -329,8 +328,15 @@ namespace HytaleFrenchPatch
                     File.Copy(f, Path.Combine(destLangDir, Path.GetFileName(f)), true);
                 progress.Value = 70;
 
-                lblStatus.Text = "Mise à jour d'Assets.zip (sauvegarde incluse)...";
-                await Task.Run(() => UpdateAssetsZip(extractedAssets, detectedAssetsZip));
+                lblStatus.Text = "Installation du mod Asset Pack...";
+                var extractedMod = Path.Combine(tmp, "Mods", "hytale-french-translation");
+                var destModDir = Path.Combine(detectedUserDataDir, "Mods", "hytale-french-translation");
+                if (Directory.Exists(destModDir)) Directory.Delete(destModDir, true);
+                Directory.CreateDirectory(Path.GetDirectoryName(destModDir));
+                Directory.Move(extractedMod, destModDir);
+                progress.Value = 90;
+
+                lblStatus.Text = "Nettoyage...";
                 progress.Value = 100;
 
                 lblStatus.Text = "Installation terminée !";
@@ -369,10 +375,11 @@ namespace HytaleFrenchPatch
                     lblStatus.ForeColor = Color.FromArgb(224, 179, 106);
                 }
 
-                if (File.Exists(detectedAssetsZip))
+                var modDir = Path.Combine(detectedUserDataDir, "Mods", "hytale-french-translation");
+                if (Directory.Exists(modDir))
                 {
-                    lblStatus.Text += "\nNettoyage d'Assets.zip...";
-                    await Task.Run(() => RemoveAssetsLocale(DefaultLocale));
+                    lblStatus.Text += "\nSuppression du mod Asset Pack...";
+                    await Task.Run(() => Directory.Delete(modDir, true));
                 }
             }
             catch (Exception ex)
@@ -383,56 +390,7 @@ namespace HytaleFrenchPatch
             finally { SetBusy(false); }
         }
 
-        private void UpdateAssetsZip(string extractedAssetsRoot, string assetsZipPath)
-        {
-            // Preserve a pristine backup once, then always patch from that backup.
-            // We append the French entries only; touching any existing entry data can
-            // trigger the Hytale launcher's integrity validation.
-            var backup = assetsZipPath + ".bak.fr";
-            if (!File.Exists(backup))
-                File.Copy(assetsZipPath, backup, false);
 
-            // Restore the original archive so existing fr-FR entries (if any) vanish cleanly.
-            File.Copy(backup, assetsZipPath, true);
-
-            var assetFiles = Directory.GetFiles(extractedAssetsRoot, "*.lang", SearchOption.AllDirectories)
-                .Select(f => (fullPath: f, entryName: GetZipEntryName(f, extractedAssetsRoot)))
-                .ToList();
-
-            using (var archive = ZipFile.Open(assetsZipPath, ZipArchiveMode.Update))
-            {
-                foreach (var (fullPath, entryName) in assetFiles)
-                    archive.CreateEntryFromFile(fullPath, entryName, CompressionLevel.Optimal);
-            }
-        }
-
-        private void RemoveAssetsLocale(string locale)
-        {
-            var prefix1 = $"Server/Languages/{locale}/";
-            var prefix2 = $"Common/Languages/{locale}/";
-            var backup = detectedAssetsZip + ".bak.fr";
-            if (File.Exists(backup))
-            {
-                File.Copy(backup, detectedAssetsZip, true);
-            }
-            else
-            {
-                // Fallback: use Update mode only if no backup is available.
-                using (var archive = ZipFile.Open(detectedAssetsZip, ZipArchiveMode.Update))
-                {
-                    var toDelete = archive.Entries
-                        .Where(e => e.FullName.StartsWith(prefix1) || e.FullName.StartsWith(prefix2))
-                        .ToList();
-                    foreach (var entry in toDelete) entry.Delete();
-                }
-            }
-        }
-
-        private string GetZipEntryName(string fullPath, string root)
-        {
-            var rel = fullPath.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            return rel.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
-        }
 
         private async Task DownloadWithProgressAsync(string url, string dest, int targetPercent)
         {

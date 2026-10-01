@@ -1,0 +1,21 @@
+{
+  "Group": "jeremiejt38",
+  "Name": "Hytale French Translation",
+  "Version": "0.6.8-7",
+  "Description": "Patch de traduction française complète pour Hytale (UI, items, cosmétiques, commandes).",
+  "Authors": [
+    {
+      "Name": "jeremiejt38",
+      "Email": "",
+      "Url": "https://github.com/jeremiejt38/hytale-french-translation"
+    }
+  ],
+  "Website": "https://github.com/jeremiejt38/hytale-french-translation",
+  "ServerVersion": "*",
+  "Dependencies": {},
+  "OptionalDependencies": {},
+  "LoadBefore": {},
+  "DisabledByDefault": false,
+  "IncludesAssetPack": false,
+  "SubPlugins": []
+}
